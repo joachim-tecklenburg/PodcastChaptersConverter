@@ -5,7 +5,8 @@ unit Main;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls, Types, Clipbrd;
+  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  Types, Clipbrd, ExtCtrls;
 
 type
 
@@ -16,9 +17,18 @@ type
     btnStartConversion: TButton;
     btnCopyToClipboard: TButton;
     edSourceFilePath: TEdit;
-    mPreview: TMemo;
+    lblCopyConfirmation: TLabel;
+    Preview: TMemo;
+    dlgOpenSourceFile: TOpenDialog;
+    TimerCopyConfirmation: TTimer;
+    procedure btnChooseSourceFileClick(Sender: TObject);
     procedure btnCopyToClipboardClick(Sender: TObject);
     procedure btnStartConversionClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure TimerCopyConfirmationStartTimer(Sender: TObject);
+    procedure TimerCopyConfirmationStopTimer(Sender: TObject);
+    procedure TimerCopyConfirmationTimer(Sender: TObject);
   private
     { private declarations }
   public
@@ -52,8 +62,8 @@ begin
 end;
 
 procedure TForm1.btnStartConversionClick(Sender: TObject);
-const
-  cFileNamePath = '/Users/Nina/Downloads/chapters(1).txt';
+//const
+//  cFileNamePath = '';
 var
   fSourceFile: Textfile;
   sOneLine: String;
@@ -63,39 +73,81 @@ var
   i: integer;
 
 begin
+  //TimerCopyConfirmation.Enabled:=False;
   slStringList := TStringList.Create;
-  slStringList.LineBreak := '.000';
-  //slStringList.StrictDelimiter := True;
-  AssignFile(fSourceFile, cFileNamePath);
-  reset(fSourceFile);
-  mPreview.Clear;
-  mPreview.Append('FILE “something.mp3" MP3');
-  i := 0;
-  while not eof(fSourceFile) do
-  begin
-    readLn(fSourcefile, sOneLine);
-    slStringList.Text := sOneLine;
-    sTitle := slStringList[1];
-    sTimeStamp := slStringList[0];
-    sTimeStamp := convertHoursToMinutes(sTimeStamp);
-    mPreview.Append('  TRACK ' + Format('%.*d',[2, i]) + ' AUDIO');
+  slStringList.LineBreak := '.000';  //TODO: Allgemeinere Lösung finden
+  AssignFile(fSourceFile, edSourceFilePath.Text);
+  btnCopyToClipboard.Enabled := True;
+  try
+    reset(fSourceFile);
+     Preview.Clear;
+     Preview.Append('FILE “something.mp3" MP3');
+     i := 0;
+     while not eof(fSourceFile) do
+     begin
+       readLn(fSourcefile, sOneLine);
+       slStringList.Text := sOneLine;
+       sTitle := slStringList[1];
+       sTimeStamp := slStringList[0];
+       sTimeStamp := convertHoursToMinutes(sTimeStamp);
+       Preview.Append('  TRACK ' + Format('%.*d',[2, i]) + ' AUDIO');
 
-    mPreview.Append('    TITLE “' + sTitle + '"');
-    mPreview.Append('    INDEX 01 ' + sTimeStamp);
-    i := i + 1;
-    slStringList.Clear;
+       Preview.Append('    TITLE “' + sTitle + '"');
+       Preview.Append('    INDEX 01 ' + sTimeStamp);
+       i := i + 1;
+       slStringList.Clear;
+     end;
+     CloseFile(fSourceFile);
+  except
+     Preview.Clear;
+     showmessage('Could not open File');
   end;
-  CloseFile(fSourceFile);
-
-
   slStringList.Free;
+end;
 
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+
+end;
+
+procedure TForm1.FormShow(Sender: TObject);
+begin
+  lblCopyConfirmation.Visible:=False;
+  TimerCopyConfirmation.Enabled:=False;
+  Preview.Clear;
+end;
+
+procedure TForm1.TimerCopyConfirmationStartTimer(Sender: TObject);
+begin
+  lblCopyConfirmation.Visible:=True;
+end;
+
+procedure TForm1.TimerCopyConfirmationStopTimer(Sender: TObject);
+begin
+
+end;
+
+
+procedure TForm1.TimerCopyConfirmationTimer(Sender: TObject);
+begin
+  lblCopyConfirmation.Visible:=False;
+  TimerCopyConfirmation.Enabled:=False;
 end;
 
 
 procedure TForm1.btnCopyToClipboardClick(Sender: TObject);
 begin
-  Clipboard.AsText := mPreview.Text;
+  Clipboard.AsText := Preview.Text;
+  TimerCopyConfirmation.Enabled:=True;
+end;
+
+procedure TForm1.btnChooseSourceFileClick(Sender: TObject);
+begin
+  if dlgOpenSourceFile.Execute then
+begin
+  btnStartConversion.Enabled := True;
+  edSourceFilePath.Text := dlgOpenSourceFile.FileName;
+end;
 end;
 
 end.
